@@ -1,0 +1,13 @@
+Package: motifRG
+Title: A package for discriminative motif discovery, designed for high throughput sequencing dataset
+Version: 0.99.7
+Date: 2012-03-23
+Author: Zizhen Yao
+Description: Tools for discriminative motif discovery using regression methods
+Imports: Biostrings, IRanges, seqLogo, parallel, methods, grid,graphics
+Maintainer: Zizhen Yao <yzizhen@fhcrc.org>
+License: Artistic-2.0
+LazyLoad: yes
+biocViews: Transcription
+Packaged: 2012-03-23 23:17:37 UTC; pshannon
+Depends: R (>= 2.10)

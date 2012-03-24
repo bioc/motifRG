@@ -1,0 +1,13 @@
+export(findMotif,
+       summaryMotif, plotMotif, 
+       motifLatexTable,
+       motifHtmlTable, 
+       refinePWMMotif,
+       refinePWMMotifExtend)
+
+import(IRanges)
+import(Biostrings)
+import(grid)
+import(seqLogo)
+import(parallel)
+
