@@ -769,6 +769,7 @@ getScore.bootStrap <- function(response, data, other.data=NULL, n = 5, is.parall
     }
   }
   if(is.parallel){
+    if (.Platform$OS.type == "windows") mc.cores <- 1
     result <- mclapply(1:n, tmp.fun,  mc.cores=mc.cores)
     if(!is.vector(data)){
       result <- do.call("cbind", result)
