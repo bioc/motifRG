@@ -8,6 +8,6 @@ Imports: Biostrings, IRanges, seqLogo, parallel, methods, grid,graphics
 Maintainer: Zizhen Yao <yzizhen@fhcrc.org>
 License: Artistic-2.0
 LazyLoad: yes
-biocViews: Transcription
+biocViews: Transcription, MotifDiscovery
 Packaged: 2012-03-23 23:17:37 UTC; pshannon
 Depends: R (>= 2.10)
