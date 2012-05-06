@@ -79,12 +79,10 @@ all.seq <- append(ctcf.seq, control.seq)
 ### specify which sequences are foreground, background. 
 category <- c(rep(1, length(ctcf.seq)), rep(0, length(control.seq))) 
 ### find motifs
-options(error=recover)
-ctcf.motifs <- findMotif(all.seq=all.seq, category=category, max.motif=3)            
+ctcf.motifs <- findMotif(all.seq=all.seq, category=category, max.motif=3)     
 @
 
-
-<<results=tex>>=
+<<results=tex, include=FALSE>>=
 motifLatexTable(main="CTCF motifs", ctcf.motifs)
 @
 
@@ -97,7 +95,7 @@ library(seqLogo)
 
 \begin{figure}[h!t]
 \centering  
-<<fig=T,  height=8, width=12>>=
+<<fig=TRUE,  height=8, width=12>>=
 seqLogo(pwm.match$model$prob)
 @ 
 \caption{PWM logo of CTCF PWM matches}
@@ -105,12 +103,13 @@ seqLogo(pwm.match$model$prob)
 
 
 <<results=hide>>=
-### Motifs found by findMotif tend to be relatively short, as longer and more specific
-### motif models do not necessarily provide better discrimination of foreground background 
-### vs background if they are already well separated.
-### However, one can refine and extend a PWM model given the motif matches by findMotif as seed
-### for more specific model. 
-pwm.match.extend <- refinePWMMotifExtend(ctcf.motifs$motifs[[1]]@match$pattern, ctcf.seq)
+## Motifs found by findMotif tend to be relatively short, as longer and
+## more specific motif models do not necessarily provide better
+## discrimination of foreground background vs background if they are
+## already well separated. However, one can refine and extend a PWM model
+## given the motif matches by findMotif as seed for more specific model.
+pwm.match.extend <- 
+    refinePWMMotifExtend(ctcf.motifs$motifs[[1]]@match$pattern, ctcf.seq)
 @ 
 
 \begin{figure}[h!t]
