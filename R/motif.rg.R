@@ -111,7 +111,8 @@ IUPAC.mat <- sapply(names(IUPAC), function(x){
 
 
 findMotif <-function(all.seq,                                #all sequences for motif search
-                     category,                               #binary vector: sequences are in foreground or background       
+                     category,                               #binary vector: sequences are in foreground or background
+                     weights=rep(1, length(all.seq)),        #weights of sequences                                
                      start.width=6,                          #the starting width for motif
                      min.cutoff=5,                           #Z-value threshold for motifs
                      min.ratio = 1.3,                        #Minimal fold change required for motifs.
@@ -128,7 +129,8 @@ findMotif <-function(all.seq,                                #all sequences for 
                      is.parallel = T,
                      mc.cores = 4,
                      min.info = 10,
-                     max.width=15)  
+                     max.width=15,
+                     discretize=T)  
   {
     if(is.parallel){
       if(Sys.info()[["sysname"]] == "Windows"){
@@ -140,6 +142,8 @@ findMotif <-function(all.seq,                                #all sequences for 
         }
       }
     }
+
+    ##mask all Ns
     fg.set <- category==1
     bg.set <- category==0
     fg.num <- sum(fg.set)
@@ -163,8 +167,8 @@ findMotif <-function(all.seq,                                #all sequences for 
       bg.total <- countNmer( all.seq[bg.set], start.width, collapse=T, both.strand=both.strand)
     }
     else{
-        fg.total <- countSetGeneral(start.nmer, all.seq[fg.set],collapse=T)
-        bg.total <- countSetGeneral(start.nmer, all.seq[bg.set],collapse=T)
+      fg.total <- countSetGeneral(start.nmer, all.seq[fg.set],collapse=F)
+      bg.total <- countSetGeneral(start.nmer, all.seq[bg.set],collapse=T)
     }
     start.nmer <- names(fg.total)[filterByRatio(fg.total, bg.total)]
     if(is.null(start.nmer) | length(start.nmer)==0){
@@ -174,7 +178,7 @@ findMotif <-function(all.seq,                                #all sequences for 
     if(is.parallel){
       tmp1 <- my.pvec(as.character(start.nmer),mc.cores=mc.cores, simplify=F,function(m){
         counts <- countSet(m, all.seq, both.strand=both.strand)
-        zvalue <- getScore(category, counts, colnames(counts) , other.data, discretize=T)
+        zvalue <- getScore(category, counts, colnames(counts) , other.data, discretize=discretize, weights=weights)
         list(counts, zvalue)
       })
       counts <- do.call("cbind", lapply(tmp1, function(x){x[[1]]}))
@@ -182,7 +186,7 @@ findMotif <-function(all.seq,                                #all sequences for 
     }
     else{
       counts <- countSet(start.nmer, all.seq, both.strand=both.strand)
-      zvalue <- getScore(category, counts, colnames(counts) , other.data, discretize=T)
+      zvalue <- getScore(category, counts, colnames(counts) , other.data, discretize=discretize,weights=weights)
     }
     
     pattern.counts <- counts
@@ -191,8 +195,6 @@ findMotif <-function(all.seq,                                #all sequences for 
       candidates <- addReversecomplement(candidates)
     }
     
-    org.seq <- all.seq
-    org.seq.view <- pasteSeq(org.seq)    
     extendPatternFlank <- function(pattern, flank)
       {
         left.extend <- max(flank - (nchar(pattern) - nchar(gsub("^N+", "", pattern))),0)
@@ -229,7 +231,7 @@ findMotif <-function(all.seq,                                #all sequences for 
           pattern <- ""
           for(i in 1:length(patterns)){
             if (result[patterns[i],"sign"] | !enriched.only){
-              bs.scores <- getScore.bootStrap(category, pattern.counts[,patterns[i]] , other.data=other.data, discretize=T,n=n.bootstrap,is.parallel=is.parallel, mc.cores=mc.cores)
+              bs.scores <- getScore.bootStrap(category, pattern.counts[,patterns[i]] , other.data=other.data, discretize=discretize,weights=weights, n=n.bootstrap,is.parallel=is.parallel, mc.cores=mc.cores)
               pval <- t.test(bs.scores)$p.value
               if(is.na(pval)){next}
               cat(patterns[i], pval, "\n")
@@ -270,7 +272,24 @@ findMotif <-function(all.seq,                                #all sequences for 
               to.test.info <- sapply(as.character(to.test), patternInfo)
               filter2 <- to.test.info> min.info
               filter3 <- filterByRatio(fg.total, bg.total)
+              ## if(sum(!filter1)>0){
+              ##   cat("Filter1\n")
+              ##   df <- data.frame(as.character(to.test), fg.total, bg.total)[!filter1,]
+              ##   print(head(df))
+              ## }
+              ## if(sum(!filter2)>0){
+              ##   cat("Filter2\n")
+              ##   df <- data.frame(as.character(to.test), to.test.info)[!filter2,]
+              ##   print(head(df))
+              ## }
+              ## if(sum(!filter3)>0){
+              ##   cat("Filter3\n")
+              ##   df <- data.frame(as.character(to.test), fg.total, bg.total)[which(!filter3),]
+              ##   print(head(df))
+              ## }
               to.test <- to.test[filter1 & filter2 & filter3]
+              ## print("Remaining candidate")
+              ## print(head(to.test))
               if(both.strand){
                 to.test <- reduceReversecomplement(to.test)
               }
@@ -312,7 +331,8 @@ findMotif <-function(all.seq,                                #all sequences for 
                 if(is.parallel){
                   tmp1 <- my.pvec(as.character(to.test), mc.cores=mc.cores,function(m){
                     counts <- countSetGeneral(m, all.seq, both.strand=both.strand)
-                    zvalue <- getScore(category, counts, colnames(counts) , other.data, discretize=T)
+                    zvalue <- getScore(category, counts, colnames(counts) , other.data, discretize=discretize,weights=weights)
+                    #print(head(zvalue))
                     select <- (zvalue > 0) == sign & abs(zvalue) > score
                     tmp.result <- list(counts[,names(select)[select],drop=F], zvalue=zvalue[select])
                     rm(counts)
@@ -327,7 +347,7 @@ findMotif <-function(all.seq,                                #all sequences for 
                 }
                 else{
                   test.counts <-  countSetGeneral(to.test,all.seq)
-                  zvalue <- getScore(category, test.counts, terms=as.character(to.test), other.data= other.data, discretize=T)
+                  zvalue <- getScore(category, test.counts, terms=as.character(to.test), other.data= other.data, discretize=discretize,weights=weights)
                   select <- (zvalue > 0) == sign & abs(zvalue) > score
                   test.counts <- test.counts[, names(select)[select], drop=F]
                   zvalue <- zvalue[select]
@@ -335,8 +355,11 @@ findMotif <-function(all.seq,                                #all sequences for 
                 result <- data.frame(zvalue = zvalue, sign = zvalue > 0, score=abs(zvalue))
                 if(is.null(result) || nrow(result)==0) {break}
                 for(p in row.names(result)){
-                  new.bs.scores <- getScore.bootStrap(category, test.counts[,p] , other.data=other.data, discretize=T,n=n.bootstrap, mc.cores=mc.cores)
-                  if(t.test(new.bs.scores, bs.scores)$p.value < bootstrap.pvalue){
+                  new.bs.scores <- getScore.bootStrap(category, test.counts[,p] , other.data=other.data, discretize=discretize,n=n.bootstrap, mc.cores=mc.cores,weights=weights)
+                  p.val <- t.test(new.bs.scores, bs.scores)$p.value
+                  #print(result[p,])
+                  #print(p.val)
+                  if(p.val < bootstrap.pvalue){
                     pattern= p
                     bs.scores <- new.bs.scores
                     score <- result[p, "score"]
@@ -384,7 +407,7 @@ findMotif <-function(all.seq,                                #all sequences for 
               start <- start + trim.mask
               end <- end - trim.mask
             }
-	    print(Views(tmp, start[1:3], end[1:3]))
+	    #print(Views(tmp, start[1:3], end[1:3]))
             masks(tmp) <- Mask(length(tmp), start, end)
             tmp <- injectHardMask(tmp, "+")            
                                         #re-count the patterns
@@ -395,13 +418,14 @@ findMotif <-function(all.seq,                                #all sequences for 
             Pattern.counts <- countSet(patterns, all.seq, both.strand=both.strand)
           }                  
           print("Rescore")
-          zvalue <- getScore(category, pattern.counts, patterns, other.data=other.data, discretize=T)
+          zvalue <- getScore(category, pattern.counts, patterns, other.data=other.data, discretize=discretize,weights=weights)
           result <- data.frame(zvalue = zvalue, sign = zvalue > 0, score=abs(zvalue))
           row.names(result) <- names(zvalue)          
           print("Finished Rescore")
         }
         return(good.motifs)
-      }    
+      }
+    org.seq.view <- pasteSeq(all.seq)
     motifs <- refinePattern(zvalue)    
     ##Rescore the motifs on unmasked sequence####
     if(mask){
@@ -416,7 +440,7 @@ findMotif <-function(all.seq,                                #all sequences for 
         tmp[as.numeric(names(l))] <- l
         y@count <- tmp
         tmp <- matrix(tmp,ncol=1, dimnames=list(NULL, pattern))
-        zvalue <- getScore(category, tmp, pattern, other.data= other.data, discretize=T)
+        zvalue <- getScore(category, tmp, pattern, other.data= other.data, discretize=discretize,weights=weights)
         y@score <- abs(zvalue)
         y
       })
@@ -545,15 +569,33 @@ plotMotif <-function(match, logodds=F, entropy=F, bg.ld=NULL, alphabet=c("A", "C
   }
 }
 
-motifScore <- function(motifs, seqs, category, other.data=NULL)
+motifScore <- function(motifs, seqs, category, ...)
   {
     counts <-  rowSums(countSetGeneral(motifs,seqs))
     counts <- as.matrix(counts)
     colnames(counts) <- "motif"
-    getScore(category, counts, colnames(counts) , other.data, discretize=T)    
+    getScore(category, counts, colnames(counts) , ...)
   }
 
-getScore <- function(response, data, terms=colnames(data), other.data=NULL, discretize=T, noutlier=6, family=binomial("logit"),sorted=T)
+discretize.glm <- function(mat, response, weights, ...)
+  {
+    col.max <- apply(mat, 2, max)+1
+    offset <- cumprod(col.max)
+    offset <- c(1, offset)
+    fac <- rowSums(t(t(mat) * offset[-length(offset) ]))
+    tb <- tapply(weights, list(fac,response), sum)
+    tb[is.na(tb)] <- 0
+    tmp <- as.integer(row.names(tb))
+    vals <- sapply(1:ncol(mat), function(i){floor(tmp/offset[i]) %% offset[i+1]})
+    tb.mat <- matrix(1, nrow=nrow(vals)*2, ncol=ncol(vals) + 1)
+    tb.mat[1:nrow(vals),-1] <- vals
+    tb.mat[(nrow(vals)+1):nrow(tb.mat),-1] <- vals
+    tb.weight=as.vector(tb)
+    tb.response = rep(as.integer(colnames(tb)), rep(nrow(tb), ncol(tb)))
+    glm.fit(tb.mat, tb.response, weights=tb.weight,intercept=T,...)
+  }
+
+getScore <- function(response, data, terms=colnames(data), weights=rep(1, length(response)), other.data=NULL, discretize=T, noutlier=6, family=binomial("logit"),sorted=T)
   {
     if(is.vector(data)){
       data <- matrix(data, ncol=1)
@@ -562,21 +604,24 @@ getScore <- function(response, data, terms=colnames(data), other.data=NULL, disc
     if(length(terms)==0){
       return(NULL);
     }
+    dim <- 1
+    if(!discretize) {
+      dim <- 2
+    }
     if(is.null(other.data)){
-      mat <- matrix(0, nrow=nrow(data), ncol=2)
+      mat <- matrix(0, nrow=nrow(data), ncol=dim)
     }
     else{
       l <- ifelse(is.vector(other.data), 1, ncol(other.data))
-      mat <- matrix(0, nrow=nrow(data), ncol=2 + l)
-      mat[,3:ncol(mat)] <- other.data
+      mat <- matrix(0, nrow=nrow(data), ncol=dim  + l)
+      mat[,(dim+1):ncol(mat)] <- other.data
     }
-    mat[,1] <- 1
-    if(discretize){
-      df <- cbind(response, as.data.frame(mat))
+    if(!discretize) {
+      mat[,1] <- 1
     }
     zvalues <- do.call("c", lapply(terms, function(v){
-    #### create design matrix
-      mat[,2] <- data[,v]     
+      #### create design matrix
+      mat[,dim] <- data[,v]     
       #If most of the data is the same value, skip regression
       tmp <- quantile(data[,v], c(noutlier/nrow(data), 1 - noutlier/nrow(data)))
       if(tmp[2] - tmp[1] <= 0){
@@ -584,29 +629,20 @@ getScore <- function(response, data, terms=colnames(data), other.data=NULL, disc
       }            
       #### logistic regression
       if(discretize){
-        df[,3] <- data[,v]
-        tmp <- as.data.frame(table(df))
-        tab.response <- as.numeric(levels(tmp[,1]))[tmp[,1]]
-        tab.mat <- matrix(0, nrow=nrow(tmp), ncol=ncol(mat))                         
-        for(i in 2:(ncol(tmp)-1)){
-          #tab.mat[,i-1] <- as.numeric(levels(tmp[,i]))[tmp[,i]]
-          tab.mat[,i-1] <- as.numeric(tmp[,i])
-        }
-        colnames(tab.mat) <- colnames(mat)
-        weights <- tmp[,ncol(tmp)]        
-        fit <- glm.fit(tab.mat, tab.response, family=family, weights=weights, intercept=T)                
+        fit <- discretize.glm(mat, response, weights,  family=family)
       }
       else{
-        fit <- glm.fit(mat, response, family=family, intercept=T)
+        fit <- glm.fit(mat, response,  weights=weights, intercept=T, family=family)
       }
       ss <- summary.glm(fit)
       z <- ss$coeff[2,3]
       if(abs(z) > 1000 && discretize){
-         fit <- glm.fit(mat, response, family=family, intercept=T)
-         ss <- summary.glm(fit)
-         z <- ss$coeff[2,3]
+        mat <- cbind(rep(1, nrow(mat)), mat)
+        fit <- glm.fit(mat, response, weights=weights, intercept=T, family=family)
+        ss <- summary.glm(fit)
+        z <- ss$coeff[2,3]
         if(abs(z) > 10000){
-          #Glm error ignore the values
+                                        #Glm error ignore the values
           z <- 0
         }
       }
@@ -751,22 +787,35 @@ motifHtmlTable <- function(motifs, dir="html", prefix="motif", enriched.only=F,p
 
 
 
-getScore.bootStrap <- function(response, data, other.data=NULL, n = 5, is.parallel=T, mc.cores=mc.cores,...)
+getScore.bootStrap <- function(response, data, weights, other.data=NULL, n = 5, is.parallel=T, mc.cores=mc.cores,...)
 {
   tmp.fun <- function(i){
     x <- sample(1:length(response), length(response), replace=T)
     if(!is.null(other.data)){
-      select.other.data <- other.data[x,]
+      if(is.matrix(other.data)){
+        select.other.data <- other.data[x,,drop=F]
+      }
+      else{
+        select.other.data <- other.data[x,drop=F]
+      }
     }
     else{
       select.other.data <- NULL
     }
     if(is.vector(data)){
-      getScore(response[x], data[x], other.data=select.other.data,sorted=F,...)
+      tryCatch(getScore(response[x], data[x], weights=weights[x], other.data=select.other.data,sorted=F,...),error=function(e){
+        error.data <- list(response[x], data[x])
+        save(error.data, file="error.rda")
+        print(e)
+      })
     }
     else{
-      getScore(response[x], data[x,], other.data=select.other.data,sorted=F,...)
-    }
+      tryCatch(getScore(response[x], data[x,], weights=weights[x], other.data=select.other.data,sorted=F,...),error=function(e){
+        error.data <- list(response[x], data[x,])
+        save(error.data, file="error.rda")
+        print(e)
+      })
+    }     
   }
   if(is.parallel){
     if (.Platform$OS.type == "windows") mc.cores <- 1

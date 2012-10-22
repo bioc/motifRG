@@ -104,10 +104,10 @@ countSet <- function(motifset, seqs, both.strand=T, collapse=F, extended=F,...)
     }
     if(!extended){
       dict <- PDict(motifset)      
-      counts <- vcountPDict(dict, seqs, collapse=collapse,...)
+      counts <- vcountPDict(dict, seqs, collapse=collapse, ...)
     }
     else{
-      counts <- vcountPDict(motifset, seqs, collapse=collapse, fixed=F,...)
+      counts <- vcountPDict(motifset, seqs, collapse=collapse, fixed=c(pattern=FALSE, subject=TRUE),...)
     }
     if(!collapse){
       if(is.matrix(counts)){

@@ -34,13 +34,9 @@ getPWM <- function(match, weights= NULL, pseudo=10, alphabet=DNA_BASES, null=rep
       })
       pwm <- t(t(pwm+ pseudo) / colSums(pwm+pseudo))
     }
-    if(!is.null(null)){
-      log.pwm <- logPWM(pwm, null)
-      return(list(prob=pwm, logodd=log.pwm))
-    }
-    else{
-      return(pwm)
-    }
+    
+    log.pwm <- logPWM(pwm, null)
+    return(list(prob=pwm, logodd=log.pwm, bg=null))
   }
 
 bestPWMMatch <- function(pwm, seqs, both.strand=T, flank=0) #pwm in logodd
@@ -78,10 +74,12 @@ scanPWMMatch <- function(pwm, seqs,  both.strand=T, flank=0,...) ##logscale
     seq <- subject(seqs.view)
     width <- ncol(pwm)
     len <- length(seq)   
-    match <- matchPWM(pwm, seq, ...)        
+    match <- matchPWM(pwm, seq, ...)
+    match <- IRanges(start(match), end(match))
     strand <- rep(T, length(match))
     if(both.strand){
       match.rev <- matchPWM(reverseComplement(pwm), seq, ...)
+      match.rev <- IRanges(start(match.rev), end(match.rev))
       strand <- c(strand, rep(F, length(match.rev)))
       match <- c(match, match.rev)
     }    
@@ -103,7 +101,7 @@ scanPWMMatch <- function(pwm, seqs,  both.strand=T, flank=0,...) ##logscale
 
               
 
-refinePWMMotif <- function(motifs=NULL, seqs, pwm.ld=NULL,  max.iter=50, tol=10^-4, mod="oops", null=rep(0.25, 4),pseudo=1)
+refinePWMMotif <- function(motifs=NULL, seqs, pwm.ld=NULL,  max.iter=50, tol=10^-4, mod="oops", null=rep(0.25, 4),pseudo=1, weights=rep(1, length(seqs)), motif.weights=NULL)
   {
     
     total.score <- -Inf
@@ -114,11 +112,15 @@ refinePWMMotif <- function(motifs=NULL, seqs, pwm.ld=NULL,  max.iter=50, tol=10^
     }
     if(is.null(pwm.ld)){
       patterns <- motifs
-      pwm.ld <- (getPWM(patterns, null=null,pseudo=pseudo))$logodd
+      if(is.null(motif.weights)){
+        motif.weights=rep(1, length(patterns))
+      }
+      pwm.ld <- (getPWM(patterns, weights=motif.weights, null=null,pseudo=pseudo))$logodd
     }
     repeat{
       if(mod=="oops"){
         match<- bestPWMMatch(pwm.ld, seqs)
+        motif$wegiths = weights
       }
       else{
         match <- scanPWMMatch(pwm.ld, seqs, min.score=1)
@@ -128,20 +130,14 @@ refinePWMMotif <- function(motifs=NULL, seqs, pwm.ld=NULL,  max.iter=50, tol=10^
         seq.sum[as.numeric(names(tmp))] <- tmp
         if(mod=="zoops"){
           lambda <- gamma/ width(seqs)[match$seq.id]          
-          match$weights <- ratio * lambda/ (1 - gamma + seq.sum[match$seq.id]*lambda)
-          gamma <- (sum(match$weights) + gamma0)/(length(seqs)+1)
+          match$weights <- ratio * lambda/ (1 - gamma + seq.sum[match$seq.id]*lambda) * weights[match$seq.id]
+          gamma <- (sum(match$weights) + gamma0)/(sum(weights)+1)
           #cat("gamma", gamma, "\n")          
         }
       }      
       patterns <- match$pattern
-      if(mod == "oops"){
-        new.score <- sum(match$score)
-        pwm <- getPWM(patterns, null=null,pseudo=pseudo)
-      }
-      else{
-        new.score <- sum(match$score * match$weights)
-        pwm <- (getPWM(patterns,weights=match$weights, null=null,pseudo=pseudo))
-      }
+      new.score <- sum(match$score * match$weights)
+      pwm <- (getPWM(patterns,weights=match$weights, null=null,pseudo=pseudo))
       pwm.ld <- pwm$logodd     
       cat(iter, new.score, "\n")
       iter = iter +1
@@ -159,7 +155,7 @@ refinePWMMotifExtend <- function(motifs=NULL, seqs, pwm.ld=NULL, flank=3, extend
   {
     prev.score <- 0    
     repeat{
-      result <- refinePWMMotif(motifs=motifs, seqs=seqs, pwm.ld=NULL, null=null, ...)
+      result <- refinePWMMotif(motifs=motifs, seqs=seqs, pwm.ld=pwm.ld, null=null, ...)
       pwm <- result$model
       width <- ncol(pwm$prob)
       ###trim on entropy###
@@ -182,6 +178,7 @@ refinePWMMotifExtend <- function(motifs=NULL, seqs, pwm.ld=NULL, flank=3, extend
       cat("Extend score", new.score, prev.score, "\n")
       if((new.score - prev.score)/abs(new.score) < extend.tol){break}
       prev.score = new.score
+      pwm.ld <- NULL
     }
     return(result)
   }
@@ -241,7 +238,7 @@ matchPWMCoor <- function(pwm, seqs, coor,  both.strand=T,...)
     match.rev <- matchPWM(pwm.rev, seq,...)
     match.df <- rbind(match.df, data.frame(strand=rep("-", length(match.rev)),
                                            pattern = as.character(reverseComplement(match.rev)), stringsAsFactors=F))
-    match <- append(match, match.rev)                      
+    match <- c(as(match,"IRanges"), as(match.rev, "IRanges"))                     
   }
   ord <- order(start(match))
   dup <- duplicated(start(match))
@@ -250,9 +247,9 @@ matchPWMCoor <- function(pwm, seqs, coor,  both.strand=T,...)
   match.df <- match.df[ord,]  
   l <- findOverlaps(match, seqs, select="first")
   r <- IRanges(start(match) - start(seqs)[l] + start(coor)[l],end(match) - start(seqs)[l] + start(coor)[l])
-  space <- IRanges::space(coor)[l]
-  #dup <- duplicated(start(r))  
-  RangedData(r, match.df, space=space, seq.id=l)
+  seqnames <- seqnames(coor)[l]
+  score <- bestPWMMatch(pwm, match.df$pattern, both.strand=F)$score
+  GRanges(r, seqnames=seqnames, strand=match.df$strand, pattern=match.df$pattern, score=score, seq.id=l)
 }
 
 
