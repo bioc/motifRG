@@ -6,15 +6,19 @@
   background sequences. 
 }
 \usage{
-findMotif(all.seq, category, start.width=6,min.cutoff=5, min.ratio=1.3,
-min.frac=0.01, both.strand=T, flank=2, max.motif=5, mask=T,other.data=NULL, start.nmer=NULL,
+findMotif(all.seq,  category, weights = rep(1, length(all.seq)),
+start.width=6,min.cutoff=5, min.ratio=1.3,
+min.frac=0.01, both.strand=T, flank=2, max.motif=5,
+mask=T,other.data=NULL, start.nmer=NULL,
 enriched.only=F,n.bootstrap = 5, bootstrap.pvalue=0.1,is.parallel =
 T,mc.cores = 4,min.info=10,max.width=15)
 }
+
 \arguments{
   \item{all.seq}{ DNAStringSet; foreground and background sequences.}
   \item{category}{numeric vector; specify which sequences are
     foreground (with value 1), and background (value 0).}
+  \item{weights}{numeric vector: the weights for all sequences. Default: 1}
   \item{start.width}{logical; the width for enumerating seed patterns}
   \item{min.cutoff}{numeric; the score cutoff required for seed selection. All
     scores are negative, the lower the better.}

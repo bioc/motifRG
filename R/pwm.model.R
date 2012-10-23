@@ -1,3 +1,5 @@
+library(IRanges)
+library(Biostrings)
 logPWM <- function(pwm,  null=rep(0.25, 4))
 {
   return(log2(pwm/null))
@@ -120,7 +122,7 @@ refinePWMMotif <- function(motifs=NULL, seqs, pwm.ld=NULL,  max.iter=50, tol=10^
     repeat{
       if(mod=="oops"){
         match<- bestPWMMatch(pwm.ld, seqs)
-        motif$wegiths = weights
+        match$weights = weights
       }
       else{
         match <- scanPWMMatch(pwm.ld, seqs, min.score=1)

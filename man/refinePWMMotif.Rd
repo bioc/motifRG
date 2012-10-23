@@ -8,7 +8,9 @@
   input sequences
 }
 \usage{
-  refinePWMMotif(motifs=NULL, seqs,  pwm.ld= NULL, max.iter=50, tol=10^-4, mod="oops", null=rep(0.25, 4),pseudo=1)
+  refinePWMMotif(motifs=NULL, seqs,  pwm.ld= NULL, max.iter=50,
+tol=10^-4, mod="oops", null=rep(0.25, 4),pseudo=1, weights=rep(1,
+length(seqs)), motif.weights=NULL)
 }
 \arguments{
   \item{motifs}{The initial set of motif matches. character vector or
@@ -26,6 +28,10 @@
   }
   \item{null}{A numeric vector specifying the background model}
   \item{pseudo}{Pseudo counts for PWM construction}
+  \item{weights}{a numeric vector specifying the weights for all
+    sequences. Default: 1 for all sequences}
+  \item{motif.weights}{a numeric vector specifying the weights for
+    initial sets of motifs. Default: NULL} 
 }
 \value{
   Return a list with two elements:
