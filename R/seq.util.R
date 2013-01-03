@@ -189,6 +189,17 @@ isContained <- function(pattern1, pattern2)
   return(TRUE)
 }
 
+addGap <- function(patterns, len=nchar(patterns)[1], ngap=1)
+{
+  all.patterns <- c()
+  pgap <- paste(rep("N", ngap), collapse="")
+  for(i in 1:(len+1)){
+    all.patterns <- c(all.patterns, paste(substr(patterns, 1, i-1), pgap, substr(patterns, i, len), sep=""))
+  }
+  all.patterns
+}
+
+
 expandPattern<- function(patterns)
   {
     final.pattern <- c()
@@ -242,7 +253,8 @@ findPatternView <- function(patterns, seqs.view,  both.strand=T, flank=0, rm.dup
     match.ranges <- as(match, "IRanges")
     start(match.ranges) <- start(match.ranges) - flank
     end(match.ranges) <- end(match.ranges) + flank
-    match.view <- Views(seq, match.ranges)    
+    match.ranges <- match.ranges[start(match.ranges) > 0 & end(match.ranges) <= length(seq)]
+    match.view <- Views(seq, match.ranges)
     match.df <- data.frame(match.strand=rep("+", length(match.view)), pattern=as.character(match.view),  stringsAsFactors =F)
   }
   if(both.strand){        
@@ -251,7 +263,9 @@ findPatternView <- function(patterns, seqs.view,  both.strand=T, flank=0, rm.dup
       match <- matchPDict(dict, seq)
       tmp.ranges <- IRanges(unlist(startIndex(match)) - flank,
                             unlist(endIndex(match)) + flank)
+      tmp.ranges <- tmp.ranges[start(tmp.ranges) > 0 & end(tmp.ranges) <= length(seq)]
       tmp <- Views(seq, tmp.ranges)
+
       match.df.rev <- data.frame(match.strand=rep("-", length(tmp)),
                                  pattern = as.character(reverseComplement(DNAStringSet(tmp))),
                                  stringsAsFactors =F)

@@ -297,6 +297,9 @@ findMotif <-function(all.seq,                                #all sequences for 
           if(both.strand){
             tested <- addReversecomplement(pattern)
           }
+          else{
+            tested <- DNAStringSet(pattern)
+          }
           start.flag <- T
           repeat{
             for(flag in c("extend", "mutate")){
