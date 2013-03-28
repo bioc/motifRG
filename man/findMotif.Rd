@@ -11,7 +11,7 @@ start.width=6,min.cutoff=5, min.ratio=1.3,
 min.frac=0.01, both.strand=T, flank=2, max.motif=5,
 mask=T,other.data=NULL, start.nmer=NULL,
 enriched.only=F,n.bootstrap = 5, bootstrap.pvalue=0.1,is.parallel =
-T,mc.cores = 4,min.info=10,max.width=15)
+T,mc.cores = 4,min.info=10,max.width=15,discretize=TRUE)
 }
 
 \arguments{
@@ -47,6 +47,7 @@ T,mc.cores = 4,min.info=10,max.width=15)
   \item{min.info}{minimal information content for the motif to prevent
     it from being too degenerate}
   \item{max.width}{maximum width of the motif for extension}
+  \item{discretize}{\code{logical} default TRUE}
 }
 
 \value{
