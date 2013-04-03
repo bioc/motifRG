@@ -1,6 +1,6 @@
 Package: motifRG
 Title: A package for discriminative motif discovery, designed for high throughput sequencing dataset
-Version: 1.4.0
+Version: 1.5.0
 Date: 2012-03-27
 Author: Zizhen Yao
 Description: Tools for discriminative motif discovery using regression methods
