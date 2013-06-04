@@ -6,6 +6,7 @@ export(findMotif,
        refinePWMMotifExtend)
 
 import(IRanges)
+import(XVector)
 import(Biostrings)
 import(grid)
 import(seqLogo)
