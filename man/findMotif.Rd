@@ -8,10 +8,10 @@
 \usage{
 findMotif(all.seq,  category, weights = rep(1, length(all.seq)),
 start.width=6,min.cutoff=5, min.ratio=1.3,
-min.frac=0.01, both.strand=T, flank=2, max.motif=5,
-mask=T,other.data=NULL, start.nmer=NULL,
+min.frac=0.01, both.strand=TRUE, flank=2, max.motif=5,
+mask=TRUE,other.data=NULL, start.nmer=NULL,
 enriched.only=F,n.bootstrap = 5, bootstrap.pvalue=0.1,is.parallel =
-T,mc.cores = 4,min.info=10,max.width=15,discretize=TRUE)
+TRUE,mc.cores = 4,min.info=10,max.width=15,discretize=TRUE)
 }
 
 \arguments{
@@ -62,23 +62,22 @@ T,mc.cores = 4,min.info=10,max.width=15,discretize=TRUE)
 
 
 \examples{
-data(ctcf.seq)
-data(control.seq)
-all.seq <- append(ctcf.seq, control.seq)
-category <- c(rep(1, length(ctcf.seq)), rep(0, length(control.seq)))
-motifs <- findMotif(all.seq, category, max.motif=2)
+MD.peak.seq <- readDNAStringSet(system.file("extdata","MD.peak.fa", package="motifRG"))
+MD.control.seq <- readDNAStringSet(system.file("extdata","MD.control.fa", package="motifRG"))
+category <- c(rep(1, length(MD.peak.seq)), rep(0, length(MD.control.seq)))
+MD.motifs <- findMotif(append(MD.peak.seq, MD.control.seq),category, max.motif=3,enriched=TRUE)
 
 ### Get summary of motifs
-summaryMotif(motifs$motifs, motifs$category)
+summaryMotif(MD.motifs$motifs, MD.motifs$category)
 
 ### plot the dinucleotide representation of the first motif
-plotMotif(motifs$motifs[[1]]@match$pattern)
+plotMotif(MD.motifs$motifs[[1]]@match$pattern)
 
 ### Create table of motifs in Latex 
-motifLatexTable(motifs, main="CTCF motifs")
+motifLatexTable(MD.motifs, main="MD motifs")
 
 ### Create table of motifs in Html
-motifHtmlTable(motifs)
+motifHtmlTable(MD.motifs)
 }
 
 

@@ -1,9 +1,14 @@
 export(findMotif,
-       summaryMotif, plotMotif, 
+       findMotifFasta,
+       findMotifFgBg,
+       summaryMotif,
+       plotMotif, 
        motifLatexTable,
        motifHtmlTable, 
        refinePWMMotif,
-       refinePWMMotifExtend)
+       refinePWMMotifExtend,
+       getSequence
+       )
 
 import(IRanges)
 import(XVector)
@@ -11,4 +16,4 @@ import(Biostrings)
 import(grid)
 import(seqLogo)
 import(parallel)
-
+import(BSgenome)

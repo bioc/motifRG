@@ -1,24 +1,47 @@
 library(motifRG)
-data(ctcf.seq)
-data(control.seq)
-### concatenate the foreground, background sequences
-all.seq <- append(ctcf.seq, control.seq)
-### specify which sequences are foreground, background. 
-category <- c(rep(1, length(ctcf.seq)), rep(0, length(control.seq))) 
-
-### find motifs
-ctcf.motifs <- findMotif(all.seq=all.seq, category=category, max.motif=3)
-
+##Use two fasta files as input
+MD.motifs <- findMotifFasta(system.file("extdata", "MD.peak.fa"), system.file("extdata", "MD.control.fa"), max.motif=5,enriched=T)
 ###print the summary of motifs
+summaryMotif(MD.motifs$motifs, MD.motifs$category)
+
+##Load peak and control coordinates. 
+data(YY1.peak)
+data(YY1.control)
+##Load human genome
+library(BSgenome.Hsapiens.UCSC.hg19)
+##Get foreground and background sequences.
+YY1.peak.seq <- getSequence(YY1.peak, genome=Hsapiens)
+YY1.control.seq <- getSequence(YY1.control, genome=Hsapiens)
+##Search motifs.
+YY1.motif.1 <- findMotifFgBg(YY1.peak.seq, YY1.control.seq, enriched=T)
+
+
+##Narrow the YY1 peaks.
+YY1.narrow.seq <- subseq(YY1.seq, pmax(round((width(YY1.seq) - 200)/2), 1), width=pmin(200, width(YY1.seq)))
+YY1.control.narrow.seq <- subseq(YY1.control.seq, pmax(round((width(YY1.control.seq) - 200)/2), 1), width=pmin(200, width(YY1.control.seq)))
+
+##concatenate sequences. 
+all.seq <- append(YY1.narrow.seq, YY1.control.narrow.seq)
+##calcualte GC content, and discretize it. 
+gc <- as.integer(cut(letterFrequency(all.seq, "CG", as.prob=T),c(-1, 0.4, 0.45, 0.5, 0.55, 0.6, 2)))
+##sequences category: 1 for foreground, 0 for background. 
+category=c(rep(1, length(YY1.narrow.seq)), rep(0, length(YY1.control.narrow.seq)))
+##Search motifs using the GC content as covariant for the regression model to adjust GC bias.
+YY1.motif.2 <- findMotif(all.seq,category, other.data=gc, max.motif=5,enriched=T)
+
+###Weight foreground sequences according to peak intensity and perform weighted regression.
+all.weights = c(peak$weight, rep(1, length(YY1.control.seq)))
+YY1.motif.3 <- findMotif(all.seq,category, other.data=gc, max.motif=5,enriched=T, weights=all.weights)
+
+###load CTCF motifs predicted by motifRG###
+data(ctcf.motifs)
 summaryMotif(ctcf.motifs$motifs, ctcf.motifs$category)
 
 ###print sequence logo of the first motif
 plotMotif(ctcf.motifs$motifs[[1]]@match$pattern)
 
-###Create a table for motifs for a latex document
-motifLatexTable(main="CTCF motifs", ctcf.motifs)
-
 ###Find a refined PWM model given the motif matches as seed
+ctcf.seq <- readDNAStringSet(system.file("inst/extdata", "ctcf.fa"))
 pwm.match <- refinePWMMotif(ctcf.motifs$motifs[[1]]@match$pattern, ctcf.seq)
 library(seqLogo)
 seqLogo(pwm.match$model$prob)

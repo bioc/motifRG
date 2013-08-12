@@ -6,10 +6,10 @@
 \description{create a latex table to be embedded in a latex document}
 \usage{
  motifLatexTable(motifs,  main="", prefix="motif", dir=".", height=1,
- width=3,enriched.only=F, plot.pwm= F,
-summary.cols=c(1,7,8,9),use.mask=T)
+ width=3,enriched.only=F, plot.pwm= TRUE,
+summary.cols=c(1,7,8,9),use.mask=TRUE)
  motifHtmlTable(motifs, dir="html", prefix="motif", enriched.only=F,
-plot.pwm= F, summary.cols=c(1,7,8,9),use.mask=T)
+plot.pwm= TRUE, summary.cols=c(1,7,8,9),use.mask=TRUE)
 }
 \arguments{
   \item{motifs}{result of findMotif}

@@ -53,7 +53,7 @@ length(seqs)), motif.weights=NULL)
 }
 
 \examples{
-data(ctcf.seq)
+ctcf.seq <- readDNAStringSet(system.file("extdata","ctcf.fa", package="motifRG"))
 data(ctcf.motifs)
 ### refine PWM model based on motif matches
 pwm.match <- refinePWMMotif(ctcf.motifs$motifs[[1]]@match$pattern, ctcf.seq)

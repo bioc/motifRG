@@ -103,89 +103,6 @@ scanPWMMatch <- function(pwm, seqs,  both.strand=T, flank=0,...) ##logscale
 
               
 
-refinePWMMotif <- function(motifs=NULL, seqs, pwm.ld=NULL,  max.iter=50, tol=10^-4, mod="oops", null=rep(0.25, 4),pseudo=1, weights=rep(1, length(seqs)), motif.weights=NULL)
-  {
-    
-    total.score <- -Inf
-    diff <- Inf
-    iter = 1    
-    if(mod=="zoops"){
-      gamma0 <- gamma <- 0.5
-    }
-    if(is.null(pwm.ld)){
-      patterns <- motifs
-      if(is.null(motif.weights)){
-        motif.weights=rep(1, length(patterns))
-      }
-      pwm.ld <- (getPWM(patterns, weights=motif.weights, null=null,pseudo=pseudo))$logodd
-    }
-    repeat{
-      if(mod=="oops"){
-        match<- bestPWMMatch(pwm.ld, seqs)
-        match$weights = weights
-      }
-      else{
-        match <- scanPWMMatch(pwm.ld, seqs, min.score=1)
-        ratio <- 2^match$score
-        tmp <- tapply(ratio, match$seq.id, sum)
-        seq.sum <- rep(0, nrow(match))
-        seq.sum[as.numeric(names(tmp))] <- tmp
-        if(mod=="zoops"){
-          lambda <- gamma/ width(seqs)[match$seq.id]          
-          match$weights <- ratio * lambda/ (1 - gamma + seq.sum[match$seq.id]*lambda) * weights[match$seq.id]
-          gamma <- (sum(match$weights) + gamma0)/(sum(weights)+1)
-          #cat("gamma", gamma, "\n")          
-        }
-      }      
-      patterns <- match$pattern
-      new.score <- sum(match$score * match$weights)
-      pwm <- (getPWM(patterns,weights=match$weights, null=null,pseudo=pseudo))
-      pwm.ld <- pwm$logodd     
-      cat(iter, new.score, "\n")
-      iter = iter +1
-      if((new.score - total.score)/abs(new.score) < tol || iter > max.iter ){
-        break
-      }
-      total.score = new.score
-    }
-    return(list(model=pwm, match=match, score=total.score))
-  }
-
-
-
-refinePWMMotifExtend <- function(motifs=NULL, seqs, pwm.ld=NULL, flank=3, extend.tol=10^-3, trim.rel.entropy=0.2,  null=rep(0.25, 4), max.width=20, ...)
-  {
-    prev.score <- 0    
-    repeat{
-      result <- refinePWMMotif(motifs=motifs, seqs=seqs, pwm.ld=pwm.ld, null=null, ...)
-      pwm <- result$model
-      width <- ncol(pwm$prob)
-      ###trim on entropy###
-      e <- apply(pwm$prob, 2, relativeEntropy, null=null)
-      trim.left <- 1
-      trim.right <- width      
-      if(!any(e > trim.rel.entropy)) {break}      
-      tmp <- which(e > trim.rel.entropy)
-      trim.left <- min(tmp)
-      trim.right <- max(tmp)        
-      if(trim.left > flank & width - trim.right > flank){ ## no information in the flanking region, no need to extend
-        break
-      }
-      if(trim.right - trim.left > max.width){
-        break
-      }
-      match <- bestPWMMatch(pwm$logodd[,trim.left:trim.right], seqs, flank=flank)      
-      motifs <- match$pattern
-      new.score <- result$score
-      cat("Extend score", new.score, prev.score, "\n")
-      if((new.score - prev.score)/abs(new.score) < extend.tol){break}
-      prev.score = new.score
-      pwm.ld <- NULL
-    }
-    return(result)
-  }
-
-
 split.pwm <- function(matches,null=rep(0.25,4), min.split=0.5, min.size=100)
   {
     all.splits <- to.split <- list(all=1:length(matches))
@@ -280,4 +197,87 @@ bestPWMMatchCoor <- function(pwm, seqs, coor, both.strand=T, flank=0)
   }
 
 
+
+
+refinePWMMotif <- function(motifs=NULL, seqs, pwm.ld=NULL,  max.iter=50, tol=10^-4, mod="oops", null=rep(0.25, 4),pseudo=1, weights=rep(1, length(seqs)), motif.weights=NULL)
+  {
+    
+    total.score <- -Inf
+    diff <- Inf
+    iter = 1    
+    if(mod=="zoops"){
+      gamma0 <- gamma <- 0.5
+    }
+    if(is.null(pwm.ld)){
+      patterns <- motifs
+      if(is.null(motif.weights)){
+        motif.weights=rep(1, length(patterns))
+      }
+      pwm.ld <- (getPWM(patterns, weights=motif.weights, null=null,pseudo=pseudo))$logodd
+    }
+    repeat{
+      if(mod=="oops"){
+        match<- bestPWMMatch(pwm.ld, seqs)
+        match$weights = weights
+      }
+      else{
+        match <- scanPWMMatch(pwm.ld, seqs, min.score=1)
+        ratio <- 2^match$score
+        tmp <- tapply(ratio, match$seq.id, sum)
+        seq.sum <- rep(0, nrow(match))
+        seq.sum[as.numeric(names(tmp))] <- tmp
+        if(mod=="zoops"){
+          lambda <- gamma/ width(seqs)[match$seq.id]          
+          match$weights <- ratio * lambda/ (1 - gamma + seq.sum[match$seq.id]*lambda) * weights[match$seq.id]
+          gamma <- (sum(match$weights) + gamma0)/(sum(weights)+1)
+          #cat("gamma", gamma, "\n")          
+        }
+      }      
+      patterns <- match$pattern
+      new.score <- sum(match$score * match$weights)
+      pwm <- (getPWM(patterns,weights=match$weights, null=null,pseudo=pseudo))
+      pwm.ld <- pwm$logodd     
+      cat(iter, new.score, "\n")
+      iter = iter +1
+      if((new.score - total.score)/abs(new.score) < tol || iter > max.iter ){
+        break
+      }
+      total.score = new.score
+    }
+    return(list(model=pwm, match=match, score=total.score))
+  }
+
+
+
+refinePWMMotifExtend <- function(motifs=NULL, seqs, pwm.ld=NULL, flank=3, extend.tol=10^-3, trim.rel.entropy=0.2,  null=rep(0.25, 4), max.width=20, ...)
+  {
+    prev.score <- 0    
+    repeat{
+      result <- refinePWMMotif(motifs=motifs, seqs=seqs, pwm.ld=pwm.ld, null=null, ...)
+      pwm <- result$model
+      width <- ncol(pwm$prob)
+      ###trim on entropy###
+      e <- apply(pwm$prob, 2, relativeEntropy, null=null)
+      trim.left <- 1
+      trim.right <- width      
+      if(!any(e > trim.rel.entropy)) {break}      
+      tmp <- which(e > trim.rel.entropy)
+      trim.left <- min(tmp)
+      trim.right <- max(tmp)        
+      if(trim.left > flank & width - trim.right > flank){ ## no information in the flanking region, no need to extend
+        break
+      }
+      if(trim.right - trim.left > max.width){
+        break
+      }
+      match <- bestPWMMatch(pwm$logodd[,trim.left:trim.right], seqs, flank=flank)      
+      motifs <- match$pattern
+      new.score <- result$score
+      cat("Extend score", new.score, prev.score, "\n")
+      if((new.score - prev.score)/abs(new.score) < extend.tol){break}
+      prev.score = new.score
+      pwm.ld <- NULL
+    }
+    return(result)
+  }
 

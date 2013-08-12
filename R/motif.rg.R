@@ -1,5 +1,6 @@
 library(Biostrings)
-library (seqLogo)
+library(seqLogo)
+library(methods)
 
 setClass("Motif", representation(score="numeric", sign="logical", count="numeric", match="data.frame", pattern="character", consensus="character"))
 
@@ -110,27 +111,28 @@ IUPAC.mat <- sapply(names(IUPAC), function(x){
   })})
 
 
-findMotif <-function(all.seq,                                #all sequences for motif search
-                     category,                               #binary vector: sequences are in foreground or background
-                     weights=rep(1, length(all.seq)),        #weights of sequences                                
-                     start.width=6,                          #the starting width for motif
-                     min.cutoff=5,                           #Z-value threshold for motifs
-                     min.ratio = 1.3,                        #Minimal fold change required for motifs.
-                     min.frac = 0.01,                                              
-                     both.strand=T,
-                     flank=2,
-                     max.motif = 5,                                        
-                     mask=T,                                 #whether we should mask the previously discovered mtifs
-                     other.data=NULL,                        #additional terms (formula and data) for regression
-                     start.nmer= NULL,                       #matrix for precomputed nmer counts
-                     enriched.only=F,                        #compute only the enriched motifs
-                     n.bootstrap = 5,                        #bootstrapping times
-                     bootstrap.pvalue=0.1,                   #bootstrapping pvalue
-                     is.parallel = T,
-                     mc.cores = 4,
-                     min.info = 10,
-                     max.width=15,
-                     discretize=T)  
+findMotif <- function(
+                      all.seq,                                #all sequences for motif search
+                      category,                               #binary vector: sequences are in foreground or background
+                      weights=rep(1, length(all.seq)),        #weights of sequences                                
+                      start.width=6,                          #the starting width for motif
+                      min.cutoff=5,                           #Z-value threshold for motifs
+                      min.ratio = 1.3,                        #Minimal fold change required for motifs.
+                      min.frac = 0.01,                                              
+                      both.strand=TRUE,
+                      flank=2,
+                      max.motif = 5,                                        
+                      mask=TRUE,                                 #whether we should mask the previously discovered mtifs
+                      other.data=NULL,                        #additional terms (formula and data) for regression
+                      start.nmer= NULL,                       #matrix for precomputed nmer counts
+                      enriched.only=F,                        #compute only the enriched motifs
+                      n.bootstrap = 5,                        #bootstrapping times
+                      bootstrap.pvalue=0.1,                   #bootstrapping pvalue
+                      is.parallel = TRUE,
+                      mc.cores = 4,
+                      min.info = 10,
+                      max.width=15,
+                      discretize=TRUE)  
   {
     if(is.parallel){
       if(Sys.info()[["sysname"]] == "Windows"){
@@ -453,6 +455,18 @@ findMotif <-function(all.seq,                                #all sequences for 
   }
 
 
+findMotifFgBg <- function(fg.seq, bg.seq,...){
+  all.seq <- append(fg.seq, bg.seq)
+  category=c(rep(1, length(fg.seq)), rep(0, length(bg.seq)))
+  findMotif(all.seq, category,...)
+}
+
+findMotifFasta <- function(fg.file, bg.file,...){
+  fg.seq <- readDNAStringSet(fg.file)
+  bg.seq <- readDNAStringSet(bg.file)
+  findMotifFgBg(fg.seq, bg.seq,...)
+}
+
 consensus <- function(pwm)
   {
     pattern <- c()
@@ -664,8 +678,8 @@ getScore <- function(response, data, terms=colnames(data), weights=rep(1, length
   }
 
 motifLatexTable <- function(motifs, main="", prefix="motif", dir=".", height=1, width=3,
-                            enriched.only=F, plot.pwm=F,
-                            summary.cols=c(1,7,8,9),use.mask=T)
+                            enriched.only=F, plot.pwm=TRUE,
+                            summary.cols=c(1,7,8,9),use.mask=TRUE)
   {
     if(!file.exists(dir)){
       dir.create(dir)
@@ -673,9 +687,6 @@ motifLatexTable <- function(motifs, main="", prefix="motif", dir=".", height=1, 
     cat("\\begin{table}[ht]\n")
     cat("\\caption{", main, "}\n")
     cat("\\centering\n")
-    #if (plot.pwm){
-    #  require("seqLogo")
-    #}
     if(use.mask){      
       summ <- summaryMotif(motifs$mask.motifs, motifs$category)
       motifs <- motifs$mask.motifs
@@ -720,22 +731,19 @@ motifLatexTable <- function(motifs, main="", prefix="motif", dir=".", height=1, 
   }
 
 
-motifHtmlTable <- function(motifs, dir="html", prefix="motif", enriched.only=F,plot.pwm=F, summary.cols=c(1,7,8,9),use.mask=T)
+motifHtmlTable <- function(motifs, dir="html", prefix="motif", enriched.only=F,plot.pwm=TRUE, summary.cols=c(1,7,8,9),use.mask=TRUE)
   {
     if(!file.exists(dir)){
       dir.create(dir)
     }
     header <- system.file("css", "header.html", package="motifRG")
     system(paste("cp", header, dir))
-    outfile <- file.path(dir, paste(prefix, "html",sep=""))
+    outfile <- file.path(dir, paste(prefix, "html",sep="."))
     tmp <- paste("cp ",header, outfile)
     print(tmp)
     system(tmp)
     conn<-file(outfile, open="at")
     cat("<body>",file=conn)    
-    #if (plot.pwm){
-    #  require("seqLogo")
-    #}
     if(use.mask){      
       summ <- summaryMotif(motifs$mask.motifs, motifs$category)
       motifs <- motifs$mask.motifs

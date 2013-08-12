@@ -198,7 +198,7 @@ addGap <- function(patterns, len=nchar(patterns)[1], ngap=1)
   }
   all.patterns
 }
-
+ 
 
 expandPattern<- function(patterns)
   {
@@ -242,18 +242,17 @@ findPatternView <- function(patterns, seqs.view,  both.strand=T, flank=0, rm.dup
   seq <- subject(seqs.view)
   if(length(patterns) > 1){
     dict <- PDict(patterns)
-    match <- matchPDict(dict, seq,...)
-    match.ranges <- IRanges(unlist(startIndex(match)) - flank,
-                            unlist(endIndex(match))+ flank)
+    match <- matchPDict(dict, seq,...)    
+    match.ranges <- IRanges(pmax(unlist(startIndex(match)) - flank, 1),
+                            pmin(unlist(endIndex(match))+ flank, length(seq)))
     match.view <- Views(seq, match.ranges)
     match.df <- data.frame(match.strand=rep("+", length(match.view)), pattern = as.character(match.view), stringsAsFactors =F)
   }
   else{
     match <- matchPattern(patterns, seq,fixed=c(F,T),...);
     match.ranges <- as(match, "IRanges")
-    start(match.ranges) <- start(match.ranges) - flank
-    end(match.ranges) <- end(match.ranges) + flank
-    match.ranges <- match.ranges[start(match.ranges) > 0 & end(match.ranges) <= length(seq)]
+    start(match.ranges) <- pmax(start(match.ranges) - flank,1)
+    end(match.ranges) <- pmin(end(match.ranges) + flank, length(seq))
     match.view <- Views(seq, match.ranges)
     match.df <- data.frame(match.strand=rep("+", length(match.view)), pattern=as.character(match.view),  stringsAsFactors =F)
   }
@@ -261,8 +260,8 @@ findPatternView <- function(patterns, seqs.view,  both.strand=T, flank=0, rm.dup
     if(length(patterns) > 1){
       dict <- PDict(reverseComplement(DNAStringSet(patterns)))
       match <- matchPDict(dict, seq)
-      tmp.ranges <- IRanges(unlist(startIndex(match)) - flank,
-                            unlist(endIndex(match)) + flank)
+      tmp.ranges <- IRanges(pmax(unlist(startIndex(match)) - flank,1),
+                            pmin(unlist(endIndex(match)) + flank, length(seq)))
       tmp.ranges <- tmp.ranges[start(tmp.ranges) > 0 & end(tmp.ranges) <= length(seq)]
       tmp <- Views(seq, tmp.ranges)
 
@@ -276,8 +275,8 @@ findPatternView <- function(patterns, seqs.view,  both.strand=T, flank=0, rm.dup
       patterns <- reverseComplement(DNAString(patterns))
       match <- matchPattern(patterns, seq,fixed=c(F,T),...)
       tmp.ranges <- as(match, "IRanges")
-      start(tmp.ranges) <- start(tmp.ranges) - flank
-      end(tmp.ranges) <- end(tmp.ranges) + flank
+      start(tmp.ranges) <- pmax(start(tmp.ranges) - flank, 1)
+      end(tmp.ranges) <- pmin(end(tmp.ranges) + flank, length(seq))
       tmp <- Views(seq, tmp.ranges)    
       match.df <- rbind(match.df,  data.frame(match.strand=rep("-", length(tmp)),
                                               pattern=as.character(reverseComplement(DNAStringSet(tmp))),
@@ -305,3 +304,32 @@ isPalindrome <- function(x)
     b <- reverseComplement(a)
     x[x %in% as.character(a) == as.character(b)]
   }
+
+maskPattern <- function(pattern, seqs,...)
+  {
+    all.seq <- pasteSeq(seqs)
+    tmp <- subject(all.seq)
+    pattern.match <- findPatternView(pattern, all.seq, ...)    
+    r <- reduce(ranges(pattern.match)[[1]])
+    start <- start(r)
+    end <- end(r)
+    masks(tmp) <- Mask(length(tmp), start, end)
+    tmp <- injectHardMask(tmp, "+")       
+    new.seqs <- DNAStringSet(Views(tmp, start(all.seq), end(all.seq)))
+  }
+
+getSequence <- function(gr, genome)
+  {
+    all.seq <- DNAStringSet(rep("", length(gr)))
+    for(chr in (sort(unique(seqnames(gr))))){
+      select <- as.vector(seqnames(gr)==chr)
+      gr.select <- gr[select]
+      chr.seq <- genome[[chr]]                            
+      seq <- DNAStringSet(Views(chr.seq, start=start(gr.select), end=end(gr.select)))
+      neg <- as.vector(strand(gr.select) == "-" )
+      seq[neg] <- reverseComplement(DNAStringSet(seq[neg]))
+      all.seq[select] <- seq
+    }
+    all.seq
+  }
+
