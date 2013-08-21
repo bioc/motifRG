@@ -5,12 +5,12 @@ Version: 1.5.2
 Date: 2012-03-23
 Author: Zizhen Yao
 Description: Tools for discriminative motif discovery using regression methods
-Imports: Biostrings,IRanges,seqLogo,parallel,methods,grid,graphics
+Imports: Biostrings,IRanges,seqLogo,parallel,methods,grid,graphics,XVector
 Maintainer: Zizhen Yao <yzizhen@fhcrc.org>
 License: Artistic-2.0
 LazyLoad: yes
 biocViews: Transcription,MotifDiscovery
 Packaged: 2012-03-23 23:17:37 UTC; pshannon
-Depends: R (>= 2.15), Biostrings (>= 2.26), IRanges, seqLogo, parallel, methods, grid, graphics, BSgenome
+Depends: R (>= 2.15), Biostrings (>= 2.26), IRanges, seqLogo, parallel, methods, grid, graphics, BSgenome, XVector, BSgenome.Hsapiens.UCSC.hg19
 
 

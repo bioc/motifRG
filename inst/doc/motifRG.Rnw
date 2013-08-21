@@ -106,6 +106,9 @@ summary(width(YY1.peak.seq))
 Considering that YY1 has a very degenerate motif, it is likely to occur by chance in such wide peaks. 
 
 Assuming that YY1 peak summits occur within the center of the peaks, we can narrow the peaks to increase signal to noise ratio. We can also fit GC content as covariants for the regression model to balance this bias. 
+In addition, in many ChIP-Seq datasets, the stronger peaks are more likely to be direct targets than the weaker peaks, and more likely to contain the transcription factor motif. But it is hard to make the cutoff without knowing the motif in priori. One can weight the foreround sequences based on peak intensity, and use the weights in motif prediction:
+
+To narrow the peak:
 <<results=hide>>=
 YY1.narrow.seq <- subseq(YY1.peak.seq, 
                          pmax(round((width(YY1.peak.seq) - 200)/2), 1), 
@@ -113,25 +116,33 @@ YY1.narrow.seq <- subseq(YY1.peak.seq,
 YY1.control.narrow.seq <- subseq(YY1.control.seq, 
                                  pmax(round((width(YY1.control.seq) - 200)/2),1), 
                                  width=pmin(200, width(YY1.control.seq)))
-all.seq <- append(YY1.narrow.seq, YY1.control.narrow.seq)
 category=c(rep(1, length(YY1.narrow.seq)), rep(0, length(YY1.control.narrow.seq)))
+@ 
+ 
+To compute GC bias:
+<<results=hide>>=
+all.seq <- append(YY1.narrow.seq, YY1.control.narrow.seq)
 gc <- as.integer(cut(letterFrequency(all.seq, "CG", as.prob=T),
                      c(-1, 0.4, 0.45, 0.5, 0.55, 0.6, 2)))
-YY1.motif.2 <- findMotif(all.seq,category, other.data=gc, max.motif=5,enriched=T)
 @ 
 
+To weight sequences:
+<<results=hide>>=
+all.weights = c(YY1.peak$weight, rep(1, length(YY1.control.seq)))
+@ 
+
+Use all of above for motif prediction:
+<<results=hide>>=
+YY1.motif.2 <- findMotif(all.seq,category, other.data=gc, 
+                         max.motif=5,enriched=T, weights=all.weights)
+@ 
 
 <<results=tex, include=FALSE>>=
 motifLatexTable(main="Refined YY1 motifs", YY1.motif.2,prefix="YY1-2")
 @
 The predicted ATGGC motif for YY1 matches the reverse complement of the known motif. The results also incude ETS motif CGGAA, and other GC rich motifs. It is difficult to completely balance the effects of GC content, because it is unclear what should be the proper transformation so it is very easy to over-correct or under-correct the bais, and GC bias usually reflects other biases, such as enrichment of promoters, CpG islands, etc. The best approach to adjust for such a bias is to select a control dataset with matching distribution of GC content, promoters etc, if one has the freedom to choose arbitrary control. 
 
-In many ChIP-Seq datasets, the stronger peaks are more likely to be direct targets than the weaker peaks, and more likely to contain the transcription factor motif. But it is hard to make the cutoff without knowing the motif in priori. One can weight the foreround sequences based on peak intensity,
-and use the weights in motif prediction:
 <<results=hide>>=
-all.weights = c(YY1.peak$weight, rep(1, length(YY1.control.seq)))
-YY1.motif.3 <- findMotif(all.seq,category, other.data=gc, 
-                         max.motif=5,enriched=T, weights=all.weights)
 @ 
 
 \section{Refine PWM model}
