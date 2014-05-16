@@ -210,9 +210,6 @@ refinePWMMotif <- function(motifs=NULL, seqs, pwm.ld=NULL,  max.iter=50, tol=10^
     }
     if(is.null(pwm.ld)){
       patterns <- motifs
-      if(is.null(motif.weights)){
-        motif.weights=rep(1, length(patterns))
-      }
       pwm.ld <- (getPWM(patterns, weights=motif.weights, null=null,pseudo=pseudo))$logodd
     }
     repeat{
