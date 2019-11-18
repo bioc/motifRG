@@ -1,7 +1,7 @@
 Package: motifRG
 Title: A package for discriminative motif discovery, designed for high
         throughput sequencing dataset
-Version: 1.31.0
+Version: 1.31.1
 Date: 2012-03-23
 Author: Zizhen Yao
 Description: Tools for discriminative motif discovery using regression methods
@@ -12,5 +12,5 @@ LazyLoad: yes
 biocViews: Transcription,MotifDiscovery
 Packaged: 2012-03-23 23:17:37 UTC; pshannon
 Depends: R (>= 2.15), Biostrings (>= 2.26), IRanges, seqLogo, parallel, methods, grid, graphics, BSgenome, XVector, BSgenome.Hsapiens.UCSC.hg19
-
+PackageStatus: Deprecated
 
